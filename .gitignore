@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Data: stored in Google Drive, not in Git
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Model weights and large artefacts
+*.pt
+*.pth
+*.h5
+*.keras
+*.pkl
+*.ckpt
+*.tflite
+*.joblib
+
+# Secrets and local settings
+.env
+*.key
+.vscode/
+.idea/
+.DS_Store

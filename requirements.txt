@@ -1,0 +1,9 @@
+numpy>=1.26
+pandas>=2.1
+pyyaml>=6.0
+scikit-learn>=1.4
+matplotlib>=3.8
+torch>=2.2
+flwr>=1.8
+xgboost>=2.0
+pytest>=8.0

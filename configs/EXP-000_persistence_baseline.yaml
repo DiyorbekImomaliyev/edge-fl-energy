@@ -1,0 +1,23 @@
+# Copy this file to start a new experiment: configs/EXP-001_short_name.yaml
+experiment:
+  id: EXP-000
+  name: persistence_baseline
+  owner: Diyorbek
+  description: Example run. Predicts each value as the previous value.
+
+seed: 42
+
+data:
+  source: synthetic        # synthetic | csv
+  path: null               # for csv, e.g. data/processed/D001_deddiag_home01.csv
+  target_column: load_kw
+  test_fraction: 0.25
+
+model:
+  type: persistence        # persistence (add lstm, gru, xgboost in src/models/)
+
+federated:
+  enabled: false           # set true when the model supports FL
+  strategy: fedavg
+  num_clients: 0
+  rounds: 0
