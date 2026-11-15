@@ -14,4 +14,6 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install numpy pandas pyyaml pytest
+      # CPU-only PyTorch, so the federated tests run instead of being skipped
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
       - run: pytest
