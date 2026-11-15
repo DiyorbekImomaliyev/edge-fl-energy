@@ -21,6 +21,14 @@ pytest
 
 The example run trains nothing. It forecasts a synthetic load series with a persistence baseline and saves a full run record to `experiments/EXP-000_persistence_baseline/runs/`.
 
+To try federated training, run the second example:
+
+```bash
+python scripts/run_experiment.py --config configs/EXP-000_fedavg_lstm_example.yaml
+```
+
+It trains a small LSTM on generated homes and reports the same metrics for four approaches: persistence, local-only training, FedAvg, and FedAvg followed by local fine-tuning. The data is generated, so its numbers only show that the code works.
+
 ## Repository structure
 
 ```
@@ -32,7 +40,7 @@ scripts/        Entry points, such as run_experiment.py
 src/
   data/         Loading and preprocessing
   models/       Forecasting models (baselines, LSTM, GRU, XGBoost)
-  federated/    Federated learning clients and strategies
+  federated/    FedAvg and the comparison against its baselines
   optimisation/ Energy and comfort optimisation (for example PSO)
   evaluation/   Metrics
   pipeline.py   Connects data, model and metrics for one run

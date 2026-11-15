@@ -1,0 +1,36 @@
+# Example federated run on generated data. It checks that the code works; its numbers are not results.
+# Copy this file to start a federated experiment: configs/EXP-00x_short_name.yaml
+experiment:
+  id: EXP-000
+  name: fedavg_lstm_example
+  owner: Arman
+  description: Example run. Compares persistence, local-only, FedAvg and fine-tuned FedAvg on synthetic homes.
+
+seed: 42
+
+data:
+  source: synthetic_clients  # synthetic_clients | csv
+  paths: null                # for csv: one file per client, e.g. [data/processed/D001_home01.csv, ...]
+  target_column: load_kw
+  test_fraction: 0.25
+  lookback: 24               # past steps the model sees
+  horizon: 1                 # steps ahead to predict (1 = next step)
+
+model:
+  type: lstm
+  hidden_size: 32
+  num_layers: 1
+  learning_rate: 0.005
+  batch_size: 64
+
+federated:
+  enabled: true
+  strategy: fedavg
+  num_clients: 8             # used by synthetic_clients; csv uses the number of files
+  clients_per_round: 4
+  rounds: 10
+  local_epochs: 2            # epochs each chosen client trains per round
+  finetune_epochs: 3         # local epochs after FedAvg (personalisation)
+
+baselines:
+  local_epochs: 20           # epochs for the local-only model of each client
