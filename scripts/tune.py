@@ -31,7 +31,7 @@ def set_value(config: dict, dotted_key: str, value) -> None:
     *parents, last = dotted_key.split(".")
     node = config
     for key in parents:
-        node = node[key]
+        node = node.setdefault(key, {})
     node[last] = value
 
 
