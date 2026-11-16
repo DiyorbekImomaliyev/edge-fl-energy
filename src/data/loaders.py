@@ -46,21 +46,40 @@ def synthetic_clients(seed: int, num_clients: int, days: int = 30, steps_per_day
     return clients
 
 
-def load_clients(data_cfg: dict, seed: int, num_clients: int) -> dict[str, np.ndarray]:
-    """Return one series per client, as described by the `data` section of a config.
+def load_clients_with_time(data_cfg: dict, seed: int, num_clients: int) -> dict[str, tuple[np.ndarray, pd.DatetimeIndex]]:
+    """Return one (values, timestamps) pair per client, as described by the `data` section of a config.
 
-    - `synthetic_clients`: `num_clients` generated homes.
+    - `synthetic_clients`: `num_clients` generated homes, hourly from 1 January 2013.
     - `csv`: one file per client. The client name is the file name. List the files under
       `paths`, or give a pattern in `path_glob` (for example data/processed/lcl/D001_lcl_*.csv).
+      Timestamps are read from `time_column` (default `time`). Without that column the
+      readings are taken as hourly from 1 January 2013.
     """
     source = data_cfg["source"]
     if source == "synthetic_clients":
-        return synthetic_clients(seed, num_clients)
-    if source == "csv":
+        series = synthetic_clients(seed, num_clients)
+    elif source == "csv":
         paths = [Path(p) for p in data_cfg.get("paths") or []]
         if data_cfg.get("path_glob"):
             paths += sorted(Path().glob(data_cfg["path_glob"]))
         if not paths:
             raise ValueError("Federated runs on csv data need `data.paths` or `data.path_glob`: one file per client")
-        return {p.stem: pd.read_csv(p)[data_cfg["target_column"]].to_numpy(dtype=float) for p in paths}
-    raise ValueError(f"Unknown data source for federated runs: {source}")
+        time_column = data_cfg.get("time_column", "time")
+        clients = {}
+        for path in paths:
+            frame = pd.read_csv(path)
+            values = frame[data_cfg["target_column"]].to_numpy(dtype=float)
+            if time_column in frame.columns:
+                times = pd.DatetimeIndex(pd.to_datetime(frame[time_column]))
+            else:
+                times = pd.date_range("2013-01-01", periods=len(values), freq="h")
+            clients[path.stem] = (values, times)
+        return clients
+    else:
+        raise ValueError(f"Unknown data source for federated runs: {source}")
+    return {name: (values, pd.date_range("2013-01-01", periods=len(values), freq="h")) for name, values in series.items()}
+
+
+def load_clients(data_cfg: dict, seed: int, num_clients: int) -> dict[str, np.ndarray]:
+    """Return one series per client (values only). See `load_clients_with_time`."""
+    return {name: values for name, (values, _) in load_clients_with_time(data_cfg, seed, num_clients).items()}

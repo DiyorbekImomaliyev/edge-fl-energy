@@ -1,18 +1,20 @@
-"""LSTM forecaster: reads a window of past load values and predicts one future value."""
+"""LSTM forecaster: reads a window of past load values (and optional extra inputs) and predicts one future value."""
 import numpy as np
 import torch
 from torch import nn
 
 
 class LSTMForecaster(nn.Module):
-    def __init__(self, hidden_size: int = 32, num_layers: int = 1):
+    def __init__(self, hidden_size: int = 32, num_layers: int = 1, input_size: int = 1):
         super().__init__()
-        self.lstm = nn.LSTM(input_size=1, hidden_size=hidden_size, num_layers=num_layers, batch_first=True)
+        self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, batch_first=True)
         self.head = nn.Linear(hidden_size, 1)
 
     def forward(self, windows: torch.Tensor) -> torch.Tensor:
-        """`windows` has shape (batch, lookback). Returns shape (batch,)."""
-        output, _ = self.lstm(windows.unsqueeze(-1))
+        """`windows` has shape (batch, lookback) or (batch, lookback, input_size). Returns shape (batch,)."""
+        if windows.dim() == 2:
+            windows = windows.unsqueeze(-1)
+        output, _ = self.lstm(windows)
         return self.head(output[:, -1, :]).squeeze(-1)
 
 
