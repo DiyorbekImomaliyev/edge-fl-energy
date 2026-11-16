@@ -32,7 +32,7 @@ federated:
   num_clients: 100           # not used for csv; the number of files decides
   clients_per_round: 10
   rounds: 30
-  local_epochs: 2
+  local_epochs: 5
   finetune_epochs: 3
 
 baselines:
