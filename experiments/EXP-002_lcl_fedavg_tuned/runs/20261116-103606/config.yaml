@@ -1,0 +1,40 @@
+# EXP-001 with the one setting that tuning on the validation period supported: 5 local epochs instead of 2.
+# Prepare the data first: python scripts/prepare_lcl.py --input data/raw/lcl/Partitioned_LCL_Data.zip
+experiment:
+  id: EXP-002
+  name: lcl_fedavg_tuned
+  owner: Arman
+  description: >
+    Compares persistence, local-only, centralised, FedAvg and fine-tuned FedAvg on 100 Low Carbon London
+    homes (flat-rate tariff, January to June 2013, hourly), forecasting one hour ahead.
+
+seed: 42
+
+data:
+  source: csv
+  paths: null
+  path_glob: data/processed/lcl/D001_lcl_MAC*.csv   # one file per home, made by scripts/prepare_lcl.py
+  target_column: load_kwh
+  test_fraction: 0.25        # the last quarter of the period (about mid-May to June)
+  lookback: 24               # past hours the model sees
+  horizon: 1                 # hours ahead to predict
+
+model:
+  type: lstm
+  hidden_size: 32
+  num_layers: 1
+  learning_rate: 0.005
+  batch_size: 64
+
+federated:
+  enabled: true
+  strategy: fedavg
+  num_clients: 100           # not used for csv; the number of files decides
+  clients_per_round: 10
+  rounds: 30
+  local_epochs: 5
+  finetune_epochs: 3
+
+baselines:
+  local_epochs: 20
+  central_epochs: 5
