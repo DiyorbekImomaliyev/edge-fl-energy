@@ -174,3 +174,35 @@ def test_federated_comparison_rejects_unknown_approaches():
     config["approaches"] = ["fedprox"]
     with pytest.raises(ValueError):
         run(config)
+
+
+def test_ward_clusters_separates_two_obvious_groups():
+    from src.federated.clustering import ward_clusters
+
+    rng = np.random.default_rng(0)
+    points = np.concatenate([rng.normal(0, 0.1, (5, 3)), rng.normal(5, 0.1, (4, 3))])
+    labels = ward_clusters(points, num_clusters=2)
+    assert labels.tolist() == [0] * 5 + [1] * 4
+    assert ward_clusters(points, num_clusters=9).tolist() == list(range(9))
+    with pytest.raises(ValueError):
+        ward_clusters(points, num_clusters=10)
+
+
+def test_clustered_fedavg_reports_scores_and_keeps_other_approaches_unchanged():
+    pytest.importorskip("torch")
+    from src.pipeline import run
+
+    plain = small_federated_config()
+    plain["federated"]["num_clients"] = 6
+    plain["approaches"] = ["persistence", "fedavg"]
+
+    clustered = small_federated_config()
+    clustered["federated"]["num_clients"] = 6
+    clustered["federated"]["clustering"] = {"after_rounds": 1, "num_clusters": 2}
+    clustered["approaches"] = ["persistence", "fedavg", "fedavg_clustered", "fedavg_clustered_finetuned"]
+
+    with_clusters = run(clustered)
+    assert with_clusters["fedavg_mae"] == run(plain)["fedavg_mae"]
+    assert np.isfinite(with_clusters["fedavg_clustered_mae"])
+    assert np.isfinite(with_clusters["fedavg_clustered_finetuned_rmse"])
+    assert sum(int(size) for size in with_clusters["cluster_sizes"].split("/")) == 6

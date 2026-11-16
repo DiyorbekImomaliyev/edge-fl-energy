@@ -6,6 +6,11 @@ Approaches, each scored on every client's own test set:
 - centralised:       one model trained on all clients' data in one place (not private)
 - fedavg:            one shared model trained with federated averaging
 - fedavg_finetuned:  the shared model, then a few local epochs on each client
+- fedavg_clustered:            FedAvg, then clients are grouped by their model updates and each
+                               group continues FedAvg on its own (needs `federated.clustering`)
+- fedavg_clustered_finetuned:  the group's model, then a few local epochs on each client
+
+The two clustered approaches only run when a config lists them under `approaches`.
 
 A config can list fewer approaches under `approaches` to save time, for example while tuning.
 """
@@ -18,10 +23,12 @@ from src.data.features import CALENDAR_FEATURES, calendar_features
 from src.data.loaders import load_clients_with_time
 from src.data.windows import MinMaxScaler, split_windows
 from src.evaluation.metrics import mae, mape, rmse
+from src.federated.clustering import run_clustered_fedavg
 from src.federated.fedavg import run_fedavg
 from src.models.lstm import LSTMForecaster, predict, train_epochs
 
 APPROACHES = ("persistence", "local_only", "centralised", "fedavg", "fedavg_finetuned")
+CLUSTERED_APPROACHES = ("fedavg_clustered", "fedavg_clustered_finetuned")
 
 
 def evaluation_split(data_cfg: dict, length: int) -> tuple[int, float]:
@@ -75,7 +82,7 @@ def run_comparison(config: dict) -> dict:
     if fed_cfg.get("strategy", "fedavg") != "fedavg":
         raise NotImplementedError(f"Strategy '{fed_cfg['strategy']}' is not available. Only fedavg is implemented.")
     approaches = tuple(config.get("approaches") or APPROACHES)
-    unknown = set(approaches) - set(APPROACHES)
+    unknown = set(approaches) - set(APPROACHES) - set(CLUSTERED_APPROACHES)
     if unknown:
         raise ValueError(f"Unknown approaches: {sorted(unknown)}")
 
@@ -108,6 +115,29 @@ def run_comparison(config: dict) -> dict:
         pooled_y = np.concatenate([clients[name]["y_train"] for name in names])
         train_fn(central_model, pooled_x, pooled_y, config["baselines"]["central_epochs"])
 
+    cluster_models, cluster_of = {}, {}
+    if set(approaches) & set(CLUSTERED_APPROACHES):
+        # Its own random streams, so adding this approach does not change the others' numbers.
+        cluster_generator = torch.Generator().manual_seed(seed)
+        cluster_cfg = fed_cfg["clustering"]
+
+        def cluster_train_fn(model, inputs, targets, epochs):
+            train_epochs(
+                model, inputs, targets, epochs, model_cfg["learning_rate"], model_cfg["batch_size"], cluster_generator
+            )
+
+        cluster_models, cluster_of = run_clustered_fedavg(
+            copy.deepcopy(initial_model),
+            clients,
+            fed_cfg["rounds"],
+            fed_cfg["clients_per_round"],
+            fed_cfg["local_epochs"],
+            cluster_train_fn,
+            np.random.default_rng(seed),
+            cluster_cfg["after_rounds"],
+            cluster_cfg["num_clusters"],
+        )
+
     scores = {approach: {"mae": [], "rmse": [], "mape": []} for approach in approaches}
     for name in names:
         data = clients[name]
@@ -131,6 +161,12 @@ def run_comparison(config: dict) -> dict:
             tuned_model = copy.deepcopy(global_model)
             train_fn(tuned_model, data["x_train"], data["y_train"], fed_cfg["finetune_epochs"])
             predictions["fedavg_finetuned"] = forecast(tuned_model)
+        if "fedavg_clustered" in approaches:
+            predictions["fedavg_clustered"] = forecast(cluster_models[name])
+        if "fedavg_clustered_finetuned" in approaches:
+            tuned_cluster_model = copy.deepcopy(cluster_models[name])
+            cluster_train_fn(tuned_cluster_model, data["x_train"], data["y_train"], fed_cfg["finetune_epochs"])
+            predictions["fedavg_clustered_finetuned"] = forecast(tuned_cluster_model)
 
         for approach, predicted in predictions.items():
             scores[approach]["mae"].append(mae(truth, predicted))
@@ -141,4 +177,7 @@ def run_comparison(config: dict) -> dict:
     for approach in approaches:
         for metric, values in scores[approach].items():
             metrics[f"{approach}_{metric}"] = float(np.mean(values))
+    if cluster_of:
+        sizes = np.bincount(list(cluster_of.values()))
+        metrics["cluster_sizes"] = "/".join(str(int(size)) for size in sizes)
     return metrics
