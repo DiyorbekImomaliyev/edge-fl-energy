@@ -3,6 +3,7 @@
 Approaches, each scored on every client's own test set:
 - persistence:       repeat the last known value (no training)
 - local_only:        each client trains its own model on its own data
+- centralised:       one model trained on all clients' data in one place (not private)
 - fedavg:            one shared model trained with federated averaging
 - fedavg_finetuned:  the shared model, then a few local epochs on each client
 """
@@ -17,7 +18,7 @@ from src.evaluation.metrics import mae, mape, rmse
 from src.federated.fedavg import run_fedavg
 from src.models.lstm import LSTMForecaster, predict, train_epochs
 
-APPROACHES = ("persistence", "local_only", "fedavg", "fedavg_finetuned")
+APPROACHES = ("persistence", "local_only", "centralised", "fedavg", "fedavg_finetuned")
 
 
 def prepare_clients(config: dict) -> dict[str, dict]:
@@ -32,7 +33,7 @@ def prepare_clients(config: dict) -> dict[str, dict]:
             "y_train": scaler.scale(split["y_train"]),
             "x_test": scaler.scale(split["x_test"]),
             "y_test_raw": split["y_test"],
-            "last_value_raw": split["x_test"][:, -1],
+            "last_value_raw": split["x_test"][:, -1],  # the newest value the model is allowed to see
             "scaler": scaler,
         }
     return clients
@@ -61,6 +62,12 @@ def run_comparison(config: dict) -> dict:
         global_model, clients, fed_cfg["rounds"], fed_cfg["clients_per_round"], fed_cfg["local_epochs"], train_fn, rng
     )
 
+    # Centralised baseline: every client's (already scaled) training windows pooled in one place.
+    central_model = copy.deepcopy(initial_model)
+    pooled_x = np.concatenate([clients[name]["x_train"] for name in sorted(clients)])
+    pooled_y = np.concatenate([clients[name]["y_train"] for name in sorted(clients)])
+    train_fn(central_model, pooled_x, pooled_y, config["baselines"]["central_epochs"])
+
     scores = {approach: {"mae": [], "rmse": [], "mape": []} for approach in APPROACHES}
     for name in sorted(clients):
         data = clients[name]
@@ -75,6 +82,7 @@ def run_comparison(config: dict) -> dict:
         predictions = {
             "persistence": data["last_value_raw"],
             "local_only": data["scaler"].unscale(predict(local_model, data["x_test"])),
+            "centralised": data["scaler"].unscale(predict(central_model, data["x_test"])),
             "fedavg": data["scaler"].unscale(predict(global_model, data["x_test"])),
             "fedavg_finetuned": data["scaler"].unscale(predict(tuned_model, data["x_test"])),
         }

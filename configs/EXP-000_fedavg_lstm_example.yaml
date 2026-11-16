@@ -4,13 +4,14 @@ experiment:
   id: EXP-000
   name: fedavg_lstm_example
   owner: Arman
-  description: Example run. Compares persistence, local-only, FedAvg and fine-tuned FedAvg on synthetic homes.
+  description: Example run. Compares persistence, local-only, centralised, FedAvg and fine-tuned FedAvg on synthetic homes.
 
 seed: 42
 
 data:
   source: synthetic_clients  # synthetic_clients | csv
   paths: null                # for csv: one file per client, e.g. [data/processed/D001_home01.csv, ...]
+  path_glob: null            # for csv: or a pattern, e.g. data/processed/lcl/D001_lcl_*.csv
   target_column: load_kw
   test_fraction: 0.25
   lookback: 24               # past steps the model sees
@@ -34,3 +35,4 @@ federated:
 
 baselines:
   local_epochs: 20           # epochs for the local-only model of each client
+  central_epochs: 5          # epochs for the centralised model (all clients' data pooled)

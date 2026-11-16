@@ -62,6 +62,7 @@ def small_federated_config() -> dict:
     config = yaml.safe_load((ROOT / "configs/EXP-000_fedavg_lstm_example.yaml").read_text())
     config["federated"].update(num_clients=3, clients_per_round=2, rounds=2, local_epochs=1, finetune_epochs=1)
     config["baselines"]["local_epochs"] = 2
+    config["baselines"]["central_epochs"] = 1
     config["model"]["hidden_size"] = 8
     return config
 
