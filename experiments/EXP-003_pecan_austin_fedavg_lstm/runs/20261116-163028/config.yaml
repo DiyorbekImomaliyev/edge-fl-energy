@@ -1,0 +1,40 @@
+# EXP-002 settings, unchanged, on a hot-climate dataset: 13 Austin (Texas) homes from Pecan Street Dataport.
+# Prepare the data first: python scripts/prepare_pecan.py --input data/raw/pecan/15minute_data_austin/15minute_data_austin.csv
+experiment:
+  id: EXP-003
+  name: pecan_austin_fedavg_lstm
+  owner: Arman
+  description: >
+    Compares persistence, local-only, centralised, FedAvg and fine-tuned FedAvg on 13 Pecan Street homes in
+    Austin, Texas (April to September 2018, hourly), forecasting one hour ahead.
+
+seed: 42
+
+data:
+  source: csv
+  paths: null
+  path_glob: data/processed/pecan_austin/D002_pecan_austin_*.csv   # one file per home, made by scripts/prepare_pecan.py
+  target_column: load_kwh
+  test_fraction: 0.25        # the last quarter of the period (about mid-August to September)
+  lookback: 24               # past hours the model sees
+  horizon: 1                 # hours ahead to predict
+
+model:
+  type: lstm
+  hidden_size: 32
+  num_layers: 1
+  learning_rate: 0.005
+  batch_size: 64
+
+federated:
+  enabled: true
+  strategy: fedavg
+  num_clients: 13            # not used for csv; the number of files decides
+  clients_per_round: 10
+  rounds: 30
+  local_epochs: 5
+  finetune_epochs: 3
+
+baselines:
+  local_epochs: 20
+  central_epochs: 5
