@@ -1,0 +1,9 @@
+{
+  "experiment_id": "EXP-001",
+  "owner": "Arman",
+  "started_utc": "2026-11-16T09:11:10+00:00",
+  "git_commit": "bb3218a5da22ca1f96572a83dbbc4a0f586e744d",
+  "uncommitted_changes": false,
+  "python": "3.13.9",
+  "seed": 42
+}
