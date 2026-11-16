@@ -27,7 +27,9 @@ To try federated training, run the second example:
 python scripts/run_experiment.py --config configs/EXP-000_fedavg_lstm_example.yaml
 ```
 
-It trains a small LSTM on generated homes and reports the same metrics for four approaches: persistence, local-only training, FedAvg, and FedAvg followed by local fine-tuning. The data is generated, so its numbers only show that the code works.
+It trains a small LSTM on generated homes and reports the same metrics for five approaches: persistence, local-only training, centralised training, FedAvg, and FedAvg followed by local fine-tuning. The data is generated, so its numbers only show that the code works.
+
+To run on real homes, prepare the Low Carbon London data as described in [data/README.md](data/README.md), then run `configs/EXP-001_lcl_fedavg_lstm.yaml`.
 
 ## Repository structure
 

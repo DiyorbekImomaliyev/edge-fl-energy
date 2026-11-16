@@ -50,14 +50,17 @@ def load_clients(data_cfg: dict, seed: int, num_clients: int) -> dict[str, np.nd
     """Return one series per client, as described by the `data` section of a config.
 
     - `synthetic_clients`: `num_clients` generated homes.
-    - `csv`: one file per client, listed under `paths`. The client name is the file name.
+    - `csv`: one file per client. The client name is the file name. List the files under
+      `paths`, or give a pattern in `path_glob` (for example data/processed/lcl/D001_lcl_*.csv).
     """
     source = data_cfg["source"]
     if source == "synthetic_clients":
         return synthetic_clients(seed, num_clients)
     if source == "csv":
         paths = [Path(p) for p in data_cfg.get("paths") or []]
+        if data_cfg.get("path_glob"):
+            paths += sorted(Path().glob(data_cfg["path_glob"]))
         if not paths:
-            raise ValueError("Federated runs on csv data need `data.paths`: one file per client")
+            raise ValueError("Federated runs on csv data need `data.paths` or `data.path_glob`: one file per client")
         return {p.stem: pd.read_csv(p)[data_cfg["target_column"]].to_numpy(dtype=float) for p in paths}
     raise ValueError(f"Unknown data source for federated runs: {source}")
