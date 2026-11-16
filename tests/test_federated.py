@@ -118,3 +118,59 @@ def test_federated_run_rejects_other_models():
     config["model"]["type"] = "persistence"
     with pytest.raises(NotImplementedError):
         run(config)
+
+
+def test_make_windows_with_extra_inputs_puts_load_first():
+    series = np.arange(10, dtype=float)
+    extra = np.column_stack([series * 10, series * 100])
+    inputs, targets, _ = make_windows(series, lookback=3, horizon=1, extra=extra)
+    assert inputs.shape == (7, 3, 3)
+    assert inputs[0, :, 0].tolist() == [0.0, 1.0, 2.0]
+    assert inputs[0, -1].tolist() == [2.0, 20.0, 200.0]
+    assert targets[0] == 3.0
+
+
+def test_calendar_features_are_cyclic():
+    import pandas as pd
+
+    from src.data.features import calendar_features
+
+    features = calendar_features(pd.date_range("2013-01-07", periods=24 * 8, freq="h"))  # starts on a Monday
+    assert features.shape == (192, 4)
+    assert np.abs(features).max() <= 1.0
+    assert features[0] == pytest.approx(features[24 * 7])   # same hour, one week later
+    assert features[0, :2] == pytest.approx(features[24, :2])  # same hour, next day
+    assert not np.allclose(features[0, 2:], features[24, 2:])  # but a different weekday
+
+
+def test_validation_split_never_uses_the_test_period():
+    from src.federated.comparison import evaluation_split
+
+    assert evaluation_split({"test_fraction": 0.25}, 1000) == (1000, 0.25)
+    usable, fraction = evaluation_split(
+        {"test_fraction": 0.25, "evaluate_on": "validation", "validation_fraction": 0.15}, 1000
+    )
+    assert usable == 750
+    assert fraction == pytest.approx(0.2)  # 150 of the 750 usable hours
+
+
+def test_federated_comparison_with_calendar_inputs_and_fewer_approaches():
+    pytest.importorskip("torch")
+    from src.pipeline import run
+
+    config = small_federated_config()
+    config["data"]["calendar_features"] = True
+    config["approaches"] = ["persistence", "fedavg"]
+    metrics = run(config)
+    assert np.isfinite(metrics["fedavg_mae"])
+    assert "local_only_mae" not in metrics and "centralised_mae" not in metrics
+
+
+def test_federated_comparison_rejects_unknown_approaches():
+    pytest.importorskip("torch")
+    from src.pipeline import run
+
+    config = small_federated_config()
+    config["approaches"] = ["fedprox"]
+    with pytest.raises(ValueError):
+        run(config)

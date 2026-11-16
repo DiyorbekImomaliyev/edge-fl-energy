@@ -2,11 +2,17 @@
 import numpy as np
 
 
-def make_windows(series: np.ndarray, lookback: int, horizon: int = 1) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def make_windows(
+    series: np.ndarray, lookback: int, horizon: int = 1, extra: np.ndarray | None = None
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Return inputs, targets and the position of each target in `series`.
 
     Each input is `lookback` consecutive values. Its target is the value
     `horizon` steps after the last input value (horizon=1 is the next step).
+
+    `extra` holds more inputs per time step, shape (len(series), features). With it, inputs
+    have shape (windows, lookback, 1 + features) and the load is feature 0. Without it,
+    inputs have shape (windows, lookback).
     """
     if lookback < 1 or horizon < 1:
         raise ValueError("lookback and horizon must be at least 1")
@@ -14,19 +20,26 @@ def make_windows(series: np.ndarray, lookback: int, horizon: int = 1) -> tuple[n
     if count < 1:
         raise ValueError("Series is too short for this lookback and horizon")
     starts = np.arange(count)
-    inputs = np.stack([series[s : s + lookback] for s in starts])
+    steps = starts[:, None] + np.arange(lookback)[None, :]
+    inputs = series[steps]
+    if extra is not None:
+        if len(extra) != len(series):
+            raise ValueError("extra must have one row per value in series")
+        inputs = np.concatenate([inputs[:, :, None], extra[steps]], axis=2)
     target_index = starts + lookback + horizon - 1
     return inputs, series[target_index], target_index
 
 
-def split_windows(series: np.ndarray, lookback: int, horizon: int, test_fraction: float) -> dict:
+def split_windows(
+    series: np.ndarray, lookback: int, horizon: int, test_fraction: float, extra: np.ndarray | None = None
+) -> dict:
     """Window a series and split it in time order.
 
     A window belongs to the test set when its target is in the last
     `test_fraction` of the series. Test inputs may reach back into the training
     period, which is allowed: only past values are used to predict.
     """
-    inputs, targets, target_index = make_windows(series, lookback, horizon)
+    inputs, targets, target_index = make_windows(series, lookback, horizon, extra)
     cut = int(len(series) * (1 - test_fraction))
     is_test = target_index >= cut
     if not is_test.any() or is_test.all():
