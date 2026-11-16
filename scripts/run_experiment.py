@@ -45,9 +45,12 @@ def set_seed(seed: int) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run one experiment from a config file.")
     parser.add_argument("--config", required=True, type=Path, help="Path to the experiment YAML file")
+    parser.add_argument("--seed", type=int, default=None, help="Use this seed instead of the one in the config")
     args = parser.parse_args()
 
     config = yaml.safe_load(args.config.read_text())
+    if args.seed is not None:
+        config["seed"] = args.seed
     exp = config["experiment"]
     status = git("status", "--porcelain")
     run_info = {
@@ -66,7 +69,10 @@ def main() -> None:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     run_dir = ROOT / "experiments" / f"{exp['id']}_{exp['name']}" / "runs" / stamp
     run_dir.mkdir(parents=True)
-    shutil.copy(args.config, run_dir / "config.yaml")
+    if args.seed is None:
+        shutil.copy(args.config, run_dir / "config.yaml")
+    else:
+        (run_dir / "config.yaml").write_text(yaml.safe_dump(config, sort_keys=False))
     (run_dir / "metrics.json").write_text(json.dumps(metrics, indent=2) + "\n")
     (run_dir / "run_info.json").write_text(json.dumps(run_info, indent=2) + "\n")
 
