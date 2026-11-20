@@ -1,0 +1,19 @@
+{
+  "num_clients": 13,
+  "test_size_per_client": 1098,
+  "persistence_mae": 0.4899867591424968,
+  "persistence_rmse": 0.7325228095223278,
+  "persistence_mape": 34.88386193834645,
+  "local_only_mae": 0.43878921769548196,
+  "local_only_rmse": 0.6302364677481473,
+  "local_only_mape": 33.574695535486946,
+  "centralised_mae": 0.4463163532086974,
+  "centralised_rmse": 0.6499872972743632,
+  "centralised_mape": 33.49516233577644,
+  "fedavg_mae": 0.45315728183170134,
+  "fedavg_rmse": 0.654589744922145,
+  "fedavg_mape": 35.10425769398548,
+  "fedavg_finetuned_mae": 0.4351163518562661,
+  "fedavg_finetuned_rmse": 0.6259888264440305,
+  "fedavg_finetuned_mape": 33.93921105327156
+}

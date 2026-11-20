@@ -1,0 +1,35 @@
+experiment:
+  id: EXP-004
+  name: pecan_austin_weekfill
+  owner: Arman
+  description: 'Compares persistence, local-only, centralised, FedAvg and fine-tuned
+    FedAvg on 20 Pecan Street homes in Austin, Texas (April to September 2018, hourly),
+    forecasting one hour ahead.
+
+    '
+seed: 43
+data:
+  source: csv
+  paths: null
+  path_glob: data/processed/pecan_austin_weekfill/D002_pecan_austin_*.csv
+  target_column: load_kwh
+  test_fraction: 0.25
+  lookback: 24
+  horizon: 1
+model:
+  type: lstm
+  hidden_size: 32
+  num_layers: 1
+  learning_rate: 0.005
+  batch_size: 64
+federated:
+  enabled: true
+  strategy: fedavg
+  num_clients: 20
+  clients_per_round: 10
+  rounds: 30
+  local_epochs: 5
+  finetune_epochs: 3
+baselines:
+  local_epochs: 20
+  central_epochs: 5
